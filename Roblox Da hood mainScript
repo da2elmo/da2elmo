@@ -1,0 +1,411 @@
+local MarketplaceService = game:GetService("MarketplaceService")
+local DataStoreService = game:GetService("DataStoreService")
+local HttpService = game:GetService("HttpService")
+local Players = game:GetService("Players")
+local ProductData = require(game:GetService("ServerStorage").Game.Products)
+local pNotify = game.ReplicatedStorage.pNotifyStorage.pNotifyEvent
+local MainEvent = game.ReplicatedStorage[".gg/untitledhood"]
+local GameModule = require(game.ServerStorage.Game.Modules.Game)
+local DatastoreModule = require(game.ServerStorage.Game.Modules.Datastore)
+local MainModule = require(game.ReplicatedStorage.MainModule)
+local ServerStorage = game.ServerStorage
+local MarketplaceService = game:GetService("MarketplaceService")
+local GameFolder = ServerStorage.Game
+
+
+-- Data store for tracking purchases that were successfully processed
+local purchaseHistoryStore = DataStoreService:GetDataStore("PurchaseHistory")
+
+-- Table setup containing product IDs and functions for handling purchases
+local productFunctions = {}
+
+productFunctions[ProductData["Developer Product"]["Server Battle Royale"]] = function(receipt, Player)
+	if not game.ReplicatedStorage.BattleRoyale.Value then
+		GameModule:StartBattleRoyale()
+	end
+	return true
+end
+productFunctions[ProductData["Developer Product"]["Global Battle Royale"]] = function(receipt, Player)
+	if not game.ReplicatedStorage.BattleRoyale.Value then
+		DataStoreService:GetDataStore("Announcement"):SetAsync("StartGlobalBR", true)
+
+		local Data = {
+			["content"] = "<@&1096691206538416189>",
+			["username"] = "Untitled Hood",
+			["avatar_url"] = "https://cdn.discordapp.com/attachments/1092231656460537866/1093262861977002014/untitledhoodicon.png",
+			["tts"] = false,
+			["embeds"] = {
+				{
+					["title"] = "",
+					["type"] = "rich",
+					["description"] = "\n\n\n"..Player.Name.." purchased global battle royale!, join any servers to participate\n\n",
+					["url"] = "",
+					["timestamp"] = "",
+					["color"] = 0xBDFCAB,
+					["footer"] = {
+						["text"] = "Untitled Hood GameModes",
+						["icon_url"] = "https://cdn.discordapp.com/attachments/1092231656460537866/1093262861977002014/untitledhoodicon.png"
+					},
+					["image"] = {
+						["url"] = ""
+					},
+					["thumbnail"] = {
+						["url"] = ""
+					},
+					["author"] = {
+						["name"] = "",
+						["url"] = ""
+					},
+
+				}
+			}
+		}
+		HttpService:PostAsync("https://hooks.hyra.io/api/webhooks/1100704744013578271/ofYi3AscnWTUPTc7QGiRuxbArGrdQoVTBNftEz-50CyApOmSIXGhXRHCH5sbWWAbetn5", HttpService:JSONEncode(Data))
+	end
+	
+end
+
+productFunctions[ProductData["Developer Product"]["SpawnJeep"]] = function(receipt, Player)
+	local Jeep = GameFolder.Projectiles.Jeep:Clone()
+	local String = Instance.new("StringValue", game.Players[Player.Name].DataFolder.Inventory)
+	Jeep.Name = Player.Name.."Jeep"
+	Jeep.Parent = workspace.Vehicles
+	Jeep:PivotTo(workspace.Ignored.JeepSpawn.CFrame)
+	_G.Session[Player.UserId]["OwnedItems"]["Jeep"] = true
+	String.Name = "[Jeepney]"
+	String.Value = tostring(os.time() + 604800)
+	return true
+end
+
+productFunctions[ProductData["Developer Product"]["Bullet Color Randomizer"]] = function(receipt, Player)
+	pNotify:FireClient(Player, "Info", "Info", "Product processing...")
+	local InventoryData = HttpService:JSONDecode(Player.DataFolder.Information.Inventory.Value)
+	local RandColor = BrickColor.Random()
+	if InventoryData["BulletColor"][tostring(RandColor.Color:ToHex())] then
+		Player.DataFolder.Currency.Value += 15000
+		pNotify:FireClient(Player, "Success", "Success", "You already have this bullet color. You received 10K UHC.")
+	else
+		InventoryData["BulletColor"][tostring(RandColor.Color:ToHex())] = true
+		Player.DataFolder.Information.Inventory.Value = HttpService:JSONEncode(InventoryData)
+		MainEvent:FireClient(Player, "DeveloperProduct", "BulletColor", RandColor)
+	end
+	print(RandColor.Color:ToHex())
+	pNotify:FireClient(Player, "Success", "Success", "Obtained Bullet Color Randomizer")
+	DatastoreModule.SetData(Player, "DataFolder_"..tostring(game.ServerStorage.Game["Datastore Version"].Value), GameModule.CompileData(Player.DataFolder))
+	return true
+end
+
+productFunctions[ProductData["Developer Product"]["Blood Effect Randomizer"]] = function(receipt, Player)
+	pNotify:FireClient(Player, "Info", "Info", "Product processing...")
+	local BloodEffects = MainModule.BloodEffect
+	local InventoryData = HttpService:JSONDecode(Player.DataFolder.Information.Inventory.Value)
+	local RandomRarity = GameModule:GetRandomRarity()
+	local BloodEffectName, BloodEffectValue = GameModule:GetRandomTableDictionaryValue(BloodEffects[RandomRarity])
+	if InventoryData["BloodEffect"][tostring(BloodEffectValue)] then
+		Player.DataFolder.Currency.Value += 15000
+		pNotify:FireClient(Player, "Success", "Success", "You already have this blood effect. You received 30K UHC.")
+	else
+		InventoryData["BloodEffect"][tostring(BloodEffectValue)] = true
+		Player.DataFolder.Information.Inventory.Value = HttpService:JSONEncode(InventoryData)
+		MainEvent:FireClient(Player, "DeveloperProduct", "BloodEffect", BloodEffectName, RandomRarity)
+	end
+
+	pNotify:FireClient(Player, "Success", "Success", "Obtained Blood Effect Randomizer.")
+	--DatastoreModule.SetData(Player, "DataFolder_"..tostring(game.ServerStorage.Game["Datastore Version"].Value), GameModule.CompileData(Player.DataFolder))
+
+	local Data = {
+		["content"] = "",
+		["username"] = Player.DisplayName.."(@"..Player.Name..")",
+		["avatar_url"] = "https://cdn.discordapp.com/attachments/1092231656460537866/1096080314524242080/uhtext.png?width=671&height=671",
+		["tts"] = false,
+		["embeds"] = {
+			{
+				["title"] = "BloodFX",
+				["type"] = "rich",
+				["description"] = "\n\n**"..Player.Name.."** purchased blood effect and got **"..BloodEffectName.."**\n\n",
+				["url"] = "",
+				["timestamp"] = "",
+				["color"] = 0xBDFCAB,
+				["footer"] = {
+					["text"] = "Untitled Hood",
+					["icon_url"] = "https://cdn.discordapp.com/attachments/1092231656460537866/1096080314524242080/uhtext.png?width=671&height=671"
+				},
+				["image"] = {
+					["url"] = ""
+				},
+				["thumbnail"] = {
+					["url"] = ""
+				},
+				["author"] = {
+					["name"] = "Blood Effect ["..RandomRarity.."]",
+					["url"] = ""
+				},
+			}
+		}
+	}
+	HttpService:PostAsync("https://hooks.hyra.io/api/webhooks/1100704744013578271/ofYi3AscnWTUPTc7QGiRuxbArGrdQoVTBNftEz-50CyApOmSIXGhXRHCH5sbWWAbetn5", HttpService:JSONEncode(Data))
+	return true
+end
+productFunctions[ProductData["Developer Product"]["Instant Skinny"]] = function(receipt, Player)
+	pNotify:FireClient(Player, "Info", "Info", "Product processing...")
+	Player.DataFolder.Information.MuscleInformation.Value = "-15000"
+	Player:LoadCharacter()
+	pNotify:FireClient(Player, "Success", "Success", "Obtained Instant Skinny")
+	--DatastoreModule.SetData(Player, "DataFolder_"..tostring(game.ServerStorage.Game["Datastore Version"].Value), GameModule.CompileData(Player.DataFolder))
+	return true
+end
+
+productFunctions[ProductData["Developer Product"]["Instant Max Muscle"]] = function(receipt, Player)
+	pNotify:FireClient(Player, "Info", "Info", "Product processing...")
+	Player.DataFolder.Information.MuscleInformation.Value = "15000"
+	Player:LoadCharacter()
+	pNotify:FireClient(Player, "Success", "Success", "Obtained Instant Max Muscle")
+	--DatastoreModule.SetData(Player, "DataFolder_"..tostring(game.ServerStorage.Game["Datastore Version"].Value), GameModule.CompileData(Player.DataFolder))
+	return true
+end
+
+
+productFunctions[ProductData["Developer Product"]["Cash 1"]] = function(receipt, Player)
+	pNotify:FireClient(Player, "Info", "Info", "Product processing...")
+	Player.DataFolder.Currency.Value += 100000
+	pNotify:FireClient(Player, "Success", "Success", "Recieved Cash: 100000")
+	--DatastoreModule.SetData(Player, "DataFolder_"..tostring(game.ServerStorage.Game["Datastore Version"].Value), GameModule.CompileData(Player.DataFolder))
+	return true
+end
+
+productFunctions[ProductData["Developer Product"]["Cash 2"]] = function(receipt, Player)
+	pNotify:FireClient(Player, "Info", "Info", "Product processing...")
+	Player.DataFolder.Currency.Value += 500000
+	pNotify:FireClient(Player, "Success", "Success", "Recieved Cash: 500000")
+	--DatastoreModule.SetData(Player, "DataFolder_"..tostring(game.ServerStorage.Game["Datastore Version"].Value), GameModule.CompileData(Player.DataFolder))
+	return true
+end
+
+productFunctions[ProductData["Developer Product"]["Cash 3"]] = function(receipt, Player)
+	pNotify:FireClient(Player, "Info", "Info", "Product processing...")
+	Player.DataFolder.Currency.Value += 1000000
+	pNotify:FireClient(Player, "Success", "Success", "Recieved Cash: 1000000")
+	--DatastoreModule.SetData(Player, "DataFolder_"..tostring(game.ServerStorage.Game["Datastore Version"].Value), GameModule.CompileData(Player.DataFolder))
+	return true
+end
+
+productFunctions[ProductData["Developer Product"]["Cash 4"]] = function(receipt, Player)
+	pNotify:FireClient(Player, "Info", "Info", "Product processing...")
+	Player.DataFolder.Currency.Value += 5000000
+	pNotify:FireClient(Player, "Success", "Success", "Received Cash: 5000000")
+	--DatastoreModule.SetData(Player, "DataFolder_"..tostring(game.ServerStorage.Game["Datastore Version"].Value), GameModule.CompileData(Player.DataFolder))
+	return true
+end
+
+
+--GFIFT
+productFunctions[ProductData["Gift Developer Product"]["Cash1"]] = function(receipt, Player)
+	local GiftedPlayer = Players[_G.Session[Player.UserId]["GiftProductTo"]]
+	pNotify:FireClient(Player, "Info", "Info", "Product processing...")
+	GiftedPlayer.DataFolder.Currency.Value += 100000
+	pNotify:FireClient(GiftedPlayer, "Success", "Success", ""..Player.Name.." gifted you 100,000$!")
+	_G.Session[Player.UserId]["GiftPlayerTo"] = nil	
+	pNotify:FireClient(Player, "Success", "Success", "Successfully gifted ".. GiftedPlayer.Name .. " the product.")
+
+	return true
+end
+
+
+productFunctions[ProductData["Gift Developer Product"]["Cash2"]] = function(receipt, Player)
+	local GiftedPlayer = Players[_G.Session[Player.UserId]["GiftProductTo"]]
+	pNotify:FireClient(Player, "Info", "Info", "Product processing...")
+	GiftedPlayer.DataFolder.Currency.Value += 500000
+	pNotify:FireClient(GiftedPlayer, "Success", "Success", ""..Player.Name.." gifted you 500,000$!")
+	_G.Session[Player.UserId]["GiftPlayerTo"] = nil	
+	pNotify:FireClient(Player, "Success", "Success", "Successfully gifted ".. GiftedPlayer.Name .. " the product.")
+
+	return true
+end
+
+
+productFunctions[ProductData["Gift Developer Product"]["Cash3"]] = function(receipt, Player)
+	local GiftedPlayer = Players[_G.Session[Player.UserId]["GiftProductTo"]]
+	pNotify:FireClient(Player, "Info", "Info", "Product processing...")
+	GiftedPlayer.DataFolder.Currency.Value += 1000000
+	pNotify:FireClient(GiftedPlayer, "Success", "Success", ""..Player.Name.." gifted you 1,000,000$!")
+	_G.Session[Player.UserId]["GiftPlayerTo"] = nil	
+	pNotify:FireClient(Player, "Success", "Success", "Successfully gifted ".. GiftedPlayer.Name .. " the product.")
+
+	return true
+end
+
+
+productFunctions[ProductData["Gift Developer Product"]["Cash4"]] = function(receipt, Player)
+	local GiftedPlayer = Players[_G.Session[Player.UserId]["GiftProductTo"]]
+	pNotify:FireClient(Player, "Info", "Info", "Product processing...")
+	GiftedPlayer.DataFolder.Currency.Value += 5000000
+	pNotify:FireClient(GiftedPlayer, "Success", "Success", ""..Player.Name.." gifted you 5,000,000$!")
+	_G.Session[Player.UserId]["GiftPlayerTo"] = nil	
+	pNotify:FireClient(Player, "Success", "Success", "Successfully gifted ".. GiftedPlayer.Name .. " the product.")
+
+	return true
+end
+
+productFunctions[ProductData["Gift Developer Product"]["GiftAutoMask"]] = function(receipt, Player)
+	local GiftedPlayer = Players[_G.Session[Player.UserId]["GiftProductTo"]]
+	pNotify:FireClient(Player, "Info", "Info", "Product processing...")
+	GameModule:CreateData("[AutoMask]", "StringValue", GiftedPlayer.DataFolder.Inventory)
+	pNotify:FireClient(GiftedPlayer, "Success", "Success", ""..Player.Name.." gifted you Auto Mask! / rejoin to get them")
+	_G.Session[Player.UserId]["GiftPlayerTo"] = nil	
+	pNotify:FireClient(Player, "Success", "Success", "Successfully gifted ".. GiftedPlayer.Name .. " Auto Mask.")
+	return true
+		
+end
+
+productFunctions[ProductData["Gift Developer Product"]["GiftJeep"]] = function(receipt, Player)
+	local GiftedPlayer = Players[_G.Session[Player.UserId]["GiftProductTo"]]
+	local String = Instance.new("StringValue", GiftedPlayer.DataFolder.Inventory)
+	pNotify:FireClient(Player, "Info", "Info", "Product processing...")
+	_G.Session[GiftedPlayer.UserId]["OwnedItems"]["Jeep"] = true
+	String.Name = "[Jeepney]"
+	String.Value = tostring(os.time() + 604800)
+	pNotify:FireClient(GiftedPlayer, "Success", "Success", ""..Player.Name.." gifted you Jeep")
+	pNotify:FireClient(GiftedPlayer, "Success", "Jeep", "You own me now:3, /respawn_jeep to spawn me hihi")
+	_G.Session[Player.UserId]["GiftPlayerTo"] = nil	
+	pNotify:FireClient(Player, "Success", "Success", "Successfully gifted ".. GiftedPlayer.Name .. " Jeep.")
+	return true
+
+end
+
+
+productFunctions[ProductData["Gift Developer Product"]["GiftBulletColor"]] = function(receipt, Player)
+	local GiftedPlayer = Players[_G.Session[Player.UserId]["GiftProductTo"]]
+	pNotify:FireClient(Player, "Info", "Info", "Product processing...")
+	local InventoryData = HttpService:JSONDecode(GiftedPlayer.DataFolder.Information.Inventory.Value)
+	local RandColor = BrickColor.Random()
+	if InventoryData["BulletColor"][tostring(RandColor.Color:ToHex())] then
+		GiftedPlayer.DataFolder.Currency.Value += 15000
+		pNotify:FireClient(GiftedPlayer, "Success", "Success", "You already have this bullet color. You received 10K UHC.")
+		pNotify:FireClient(GiftedPlayer, "Success", "Success", ""..Player.Name.." gifted you a bullet color!")
+		_G.Session[Player.UserId]["GiftPlayerTo"] = nil	
+		pNotify:FireClient(Player, "Success", "Success", "Successfully gifted ".. GiftedPlayer.Name .. " the product.")
+
+	else
+		InventoryData["BulletColor"][tostring(RandColor.Color:ToHex())] = true
+		GiftedPlayer.DataFolder.Information.Inventory.Value = HttpService:JSONEncode(InventoryData)
+		MainEvent:FireClient(GiftedPlayer, "DeveloperProduct", "BulletColor", RandColor)
+		pNotify:FireClient(GiftedPlayer, "Success", "Success", ""..Player.Name.." gifted you a bullet color!")
+		_G.Session[Player.UserId]["GiftPlayerTo"] = nil	
+		pNotify:FireClient(Player, "Success", "Success", "Successfully gifted ".. GiftedPlayer.Name .. " the product.")
+
+	end
+	return true
+end
+
+
+productFunctions[ProductData["Gift Developer Product"]["GiftBloodEffect"]] = function(receipt, Player)
+	local GiftedPlayer = Players[_G.Session[Player.UserId]["GiftProductTo"]]
+	pNotify:FireClient(Player, "Info", "Info", "Product processing...")
+	local BloodEffects = MainModule.BloodEffect
+	local InventoryData = HttpService:JSONDecode(GiftedPlayer.DataFolder.Information.Inventory.Value)
+	local RandomRarity = GameModule:GetRandomRarity()
+	local BloodEffectName, BloodEffectValue = GameModule:GetRandomTableDictionaryValue(BloodEffects[RandomRarity])
+	if InventoryData["BloodEffect"][tostring(BloodEffectValue)] then
+		GiftedPlayer.DataFolder.Currency.Value += 15000
+		pNotify:FireClient(GiftedPlayer, "Success", "Success", "You already have this blood effect. You received 30K UHC.")
+		pNotify:FireClient(GiftedPlayer, "Success", "Success", ""..Player.Name.." gifted you a blood effect!")
+
+		_G.Session[Player.UserId]["GiftPlayerTo"] = nil	
+		pNotify:FireClient(Player, "Success", "Success", "Successfully gifted ".. GiftedPlayer.Name .. " the product.")
+
+	else
+		InventoryData["BloodEffect"][tostring(BloodEffectValue)] = true
+		GiftedPlayer.DataFolder.Information.Inventory.Value = HttpService:JSONEncode(InventoryData)
+		MainEvent:FireClient(GiftedPlayer, "DeveloperProduct", "BloodEffect", BloodEffectName, RandomRarity)
+		pNotify:FireClient(GiftedPlayer, "Success", "Success", ""..Player.Name.." gifted you a blood effect!")
+
+		_G.Session[Player.UserId]["GiftPlayerTo"] = nil	
+		pNotify:FireClient(Player, "Success", "Success", "Successfully gifted ".. GiftedPlayer.Name .. " the product.")
+
+		local Data = {
+			["content"] = "",
+			["username"] = Player.DisplayName.."(@"..Player.Name..")",
+			["avatar_url"] = "https://cdn.discordapp.com/attachments/1092231656460537866/1096080314524242080/uhtext.png?width=671&height=671",
+			["tts"] = false,
+			["embeds"] = {
+				{
+					["title"] = "Gifted BloodFX",
+					["type"] = "rich",
+					["description"] = "\n\n**"..Player.Name.."** gifted **"..GiftedPlayer.Name.."** BloodFX and obtained **"..BloodEffectName.."!**\n\n",
+					["url"] = "",
+					["timestamp"] = "",
+					["color"] = 0xBDFCAB,
+					["footer"] = {
+						["text"] = "Untitled Hood",
+						["icon_url"] = "https://cdn.discordapp.com/attachments/1092231656460537866/1096080314524242080/uhtext.png?width=671&height=671"
+					},
+					["image"] = {
+						["url"] = ""
+					},
+					["thumbnail"] = {
+						["url"] = ""
+					},
+					["author"] = {
+						["name"] = "Blood Effect ["..RandomRarity.."]",
+						["url"] = ""
+					},
+				}
+			}
+		}
+		HttpService:PostAsync("https://hooks.hyra.io/api/webhooks/1100704744013578271/ofYi3AscnWTUPTc7QGiRuxbArGrdQoVTBNftEz-50CyApOmSIXGhXRHCH5sbWWAbetn5", HttpService:JSONEncode(Data))
+
+
+	end
+	return true
+end
+
+-- The core 'ProcessReceipt' callback function
+local function processReceipt(receiptInfo)
+
+	-- Determine if the product was already granted by checking the data store  
+	local playerProductKey = receiptInfo.PlayerId .. "_" .. receiptInfo.PurchaseId
+	local purchased = false
+	local success, errorMessage = pcall(function()
+		purchased = purchaseHistoryStore:GetAsync(playerProductKey)
+	end)
+	-- If purchase was recorded, the product was already granted
+	if success and purchased then
+		return Enum.ProductPurchaseDecision.PurchaseGranted
+	elseif not success then
+		error("Data store error:" .. errorMessage)
+	end
+
+	-- Find the player who made the purchase in the server
+	local player = Players:GetPlayerByUserId(receiptInfo.PlayerId)
+	if not player then
+		-- The player probably left the game
+		-- If they come back, the callback will be called again
+		return Enum.ProductPurchaseDecision.NotProcessedYet
+	end
+
+	-- Look up handler function from 'productFunctions' table above
+	local handler = productFunctions[receiptInfo.ProductId]
+
+	-- Call the handler function and catch any errors
+	local success, result = pcall(handler, receiptInfo, player)
+	if not success or not result then
+		warn("[Developer Product] Error occurred while processing a product purchase")
+		warn("[Developer Product] ProductId:", receiptInfo.ProductId)
+		warn("[Developer Product] Player:", player)
+		return Enum.ProductPurchaseDecision.NotProcessedYet
+	end
+
+	-- Record transaction in data store so it isn't granted again
+	local success, errorMessage = pcall(function()
+		purchaseHistoryStore:SetAsync(playerProductKey, true)
+	end)
+	if not success then
+		error("Cannot save purchase data: " .. errorMessage)
+	end
+
+	-- IMPORTANT: Tell Roblox that the game successfully handled the purchase
+	return Enum.ProductPurchaseDecision.PurchaseGranted
+end
+
+-- Set the callback; this can only be done once by one script on the server! 
+MarketplaceService.ProcessReceipt = processReceipt
